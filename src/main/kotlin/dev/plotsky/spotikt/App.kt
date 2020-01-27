@@ -3,13 +3,58 @@
  */
 package dev.plotsky.spotikt
 
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import dev.plotsky.musikt.Configuration
+import dev.plotsky.musikt.Request
+import dev.plotsky.musikt.search.RecordingRepository
+import dev.plotsky.spotikt.spotify.LocalDateTimeAdapter
+import dev.plotsky.spotikt.spotify.SpotifyAlbumListens
+import dev.plotsky.spotikt.spotify.StreamHistoryParser
+import okhttp3.OkHttpClient
+import java.io.File
+import kotlin.system.exitProcess
+
 class App {
-    val greeting: String
-        get() {
-            return "Hello world."
-        }
+    private val moshi: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory())
+            .add(LocalDateTimeAdapter())
+            .build()
+    val greeting: String = "hello"
+    fun run(fileName: String) {
+        val file = File(fileName)
+        val listens = parseSpotifyStreaming(file)
+        val spotifyAlbums = SpotifyAlbumListens(listens, recordingRepository())
+        val albumListens = spotifyAlbums.fillAlbumListens(2019)
+        val maps = albumListens.map { it.getAlbumMap() }
+        val adapter = moshi.adapter(List::class.java).indent("  ")
+        val output = adapter.toJson(maps)
+        val outputFile = File("output.json")
+        outputFile.writeText(output)
+        return
+    }
+
+    private fun musiktConfig(): Configuration {
+        return Configuration(
+            baseUrl = "https://musicbrainz.org/ws/2",
+            appName = "Spotikt",
+            contact = "Derrick Plotsky https://github.com/derrickp"
+        )
+    }
+
+    private fun recordingRepository(): RecordingRepository {
+        val config = musiktConfig()
+        val client = OkHttpClient().newBuilder().build()
+        val request: Request = Request(config, client)
+        return RecordingRepository(request)
+    }
+
+    private fun parseSpotifyStreaming(file: File) =
+            StreamHistoryParser(moshi).parse(file)
 }
 
 fun main(args: Array<String>) {
-    println(App().greeting)
+    println(args[0])
+    App().run(args[0])
+    println("done")
+    exitProcess(0)
 }

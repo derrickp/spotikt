@@ -3,19 +3,28 @@
  *
  * This generated file contains a sample Kotlin application project to get you started.
  */
-
+/* ktlint-disable max-line-length */
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
     id("org.jetbrains.kotlin.jvm") version "1.3.61"
 
     // Apply the application plugin to add support for building a CLI application.
     application
+    `maven-publish`
 }
 
 repositories {
     // Use jcenter for resolving dependencies.
     // You can declare any Maven/Ivy/file repository here.
     jcenter()
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/derrickp/musikt")
+        credentials {
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USERNAME")
+            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 dependencies {
@@ -24,6 +33,10 @@ dependencies {
 
     // Use the Kotlin JDK 8 standard library.
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("dev.plotsky:musikt:0.0.5")
+    implementation("com.squareup.moshi:moshi:1.9.2")
+    implementation("com.squareup.moshi:moshi-kotlin:1.9.2")
+    implementation("com.squareup.moshi:moshi-adapters:1.9.2")
 
     // Use the Kotlin test library.
     testImplementation("org.jetbrains.kotlin:kotlin-test")
@@ -36,3 +49,4 @@ application {
     // Define the main class for the application.
     mainClassName = "dev.plotsky.spotikt.AppKt"
 }
+/* ktlint-enable max-line-length */

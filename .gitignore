@@ -140,4 +140,7 @@ gradle-app.setting
 ### Gradle Patch ###
 **/build/
 
+StreamingHistory*.json
+output*.json
+
 # End of https://www.gitignore.io/api/gradle,kotlin,intellij
