@@ -8,29 +8,31 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dev.plotsky.musikt.Configuration
 import dev.plotsky.musikt.Request
 import dev.plotsky.musikt.search.RecordingRepository
-import dev.plotsky.spotikt.spotify.LocalDateTimeAdapter
-import dev.plotsky.spotikt.spotify.SpotifyAlbumListens
-import dev.plotsky.spotikt.spotify.StreamHistoryParser
+import dev.plotsky.spotikt.spotify.*
 import okhttp3.OkHttpClient
 import java.io.File
 import kotlin.system.exitProcess
 
 class App {
-    private val moshi: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory())
+    val moshi: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory())
             .add(LocalDateTimeAdapter())
             .build()
     val greeting: String = "hello"
-    fun run(fileName: String) {
+    fun run(fileName: String, parsedHistory: ParsedHistory, outputFile: String) {
         val file = File(fileName)
         val listens = parseSpotifyStreaming(file)
-        val spotifyAlbums = SpotifyAlbumListens(listens, recordingRepository())
-        val albumListens = spotifyAlbums.fillAlbumListens(2019)
-        val maps = albumListens.map { it.getAlbumMap() }
-        val adapter = moshi.adapter(List::class.java).indent("  ")
-        val output = adapter.toJson(maps)
-        val outputFile = File("output.json")
-        outputFile.writeText(output)
+        val flushHistory = { history: ParsedHistory -> flush(history, outputFile) }
+        val spotifyAlbums = SpotifyAlbumListens(listens, recordingRepository(), parsedHistory, flushHistory)
+        spotifyAlbums.fillAlbumListens(null)
         return
+    }
+
+    fun flush(history: ParsedHistory, fileName: String) {
+        ParsedHistoryLoader.flush(
+                moshi = moshi,
+                fileName = fileName,
+                history = history
+        )
     }
 
     private fun musiktConfig(): Configuration {
@@ -54,7 +56,17 @@ class App {
 
 fun main(args: Array<String>) {
     println(args[0])
-    App().run(args[0])
-    println("done")
+    val input = args[0]
+    val outputFile = args[1]
+    val app = App()
+    val results = ParsedHistoryLoader.fromFile(outputFile, app.moshi)
+//    val top100 = results.topArtists(100)
+//    val line = top100.map { it.maxAlbum.toString() }.joinToString("\n")
+//    println(line)
+//    val top100File = File("top100.txt")
+//    top100File.writeText(line)
+    app.flush(results, outputFile)
+    app.run(input, results, outputFile)
+
     exitProcess(0)
 }
