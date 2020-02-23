@@ -1,39 +1,41 @@
 package dev.plotsky.spotikt.spotify
 
-import dev.plotsky.musikt.entities.Recording
-import dev.plotsky.musikt.entities.ReleaseReference
-import dev.plotsky.musikt.search.RecordingQuery
-import dev.plotsky.musikt.search.RecordingRepository
+import dev.plotsky.musikt.Client
+import dev.plotsky.musikt.entities.recordings.Recording
+import dev.plotsky.musikt.entities.releases.ReleaseReference
+import dev.plotsky.musikt.search.recordings.RecordingQuery
 import dev.plotsky.spotikt.spotify.data.ArtistResults
 import dev.plotsky.spotikt.spotify.data.Listen
 import java.lang.Thread.sleep
 
-class SpotifyAlbumListens(
-        private val listens: List<Listen>,
-        private val recordingRepository: RecordingRepository,
-        private val history: ParsedHistory,
-        private val flushHistory: (history: ParsedHistory) -> Unit
+class AlbumListensProcessor(
+    private val listens: List<Listen>,
+    private val client: Client,
+    private val history: Results,
+    private val flushHistory: (history: Results) -> Unit
 ) {
     private val recordings = mutableMapOf<String, Recording?>()
 
-    fun fillAlbumListens(year: Int?) {
+    fun process(year: Int?) {
         val streams = if (year != null) listensByYear(year) else allListens()
         println("Total number of listens: ${streams.size}")
         var count = 1
-        val toProcess = streams.slice(history.currentParseIndex until streams.size)
+        val toProcess = streams
+                .slice(history.currentParseIndex until streams.size)
         println("${toProcess.size}")
         for (listen in toProcess) {
             val recording = getRecording(listen)
             if (recording == null) {
                 addListens(listen)
             } else {
-                val officialReleases = recording.releases.filter { it.status == "Official" }
+                val officialReleases = recording.releases
+                        .filter { it.status == "Official" }
                 addListens(listen, officialReleases)
             }
             if (count % 10 == 0) {
                 flushHistory(history)
             }
-            if (count % 100 == 0 )println("${listen.artistName} $count")
+            if (count % 100 == 0)println("${listen.artistName} $count")
             sleep(1500L)
             count += 1
             history.incrementIndex()
@@ -73,7 +75,7 @@ class SpotifyAlbumListens(
         if (releases.isEmpty()) {
             addListens(listen)
         } else {
-            for(release in releases) {
+            for (release in releases) {
                 albumListen.addListen(release.title)
             }
         }
@@ -101,7 +103,7 @@ class SpotifyAlbumListens(
     }
 
     private fun getRecording(query: RecordingQuery): Recording? {
-        val recordings = recordingRepository.getByQuery(query)
+        val recordings = client.recordings.getByQuery(query)
         if (recordings.isEmpty()) {
             println(query.getEncodedQuery())
         }

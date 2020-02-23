@@ -143,5 +143,6 @@ gradle-app.setting
 Streaming*.json
 *output*.json
 top*.txt
+artist*.json
 
 # End of https://www.gitignore.io/api/gradle,kotlin,intellij

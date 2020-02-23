@@ -8,7 +8,7 @@ import kotlin.test.assertNotNull
 
 class AppTest {
     @Test fun testAppHasAGreeting() {
-        val classUnderTest = App()
+        val classUnderTest = App("1", "2", "test", "test")
         assertNotNull(classUnderTest.greeting, "app should have a greeting")
     }
 }

@@ -3,7 +3,6 @@ package dev.plotsky.spotikt.spotify
 import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dev.plotsky.spotikt.spotify.data.Listen
 import java.io.File
 import java.lang.reflect.ParameterizedType

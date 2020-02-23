@@ -2,9 +2,9 @@ package dev.plotsky.spotikt.spotify
 
 import dev.plotsky.spotikt.spotify.data.ArtistResults
 
-data class ParsedHistory(
-        var currentParseIndex: Int,
-        val listens: MutableList<ArtistResults> = mutableListOf()
+data class Results(
+    var currentParseIndex: Int,
+    val listens: MutableList<ArtistResults> = mutableListOf()
 ) {
     fun incrementIndex() {
         currentParseIndex += 1

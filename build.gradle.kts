@@ -33,7 +33,7 @@ dependencies {
 
     // Use the Kotlin JDK 8 standard library.
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("dev.plotsky:musikt:0.0.6")
+    implementation("dev.plotsky:musikt:0.0.12")
     implementation("com.squareup.moshi:moshi:1.9.2")
     implementation("com.squareup.moshi:moshi-kotlin:1.9.2")
     implementation("com.squareup.moshi:moshi-adapters:1.9.2")

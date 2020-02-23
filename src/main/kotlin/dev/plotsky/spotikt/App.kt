@@ -5,34 +5,117 @@ package dev.plotsky.spotikt
 
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import dev.plotsky.musikt.Client
 import dev.plotsky.musikt.Configuration
-import dev.plotsky.musikt.Request
-import dev.plotsky.musikt.search.RecordingRepository
 import dev.plotsky.spotikt.spotify.*
-import okhttp3.OkHttpClient
 import java.io.File
 import kotlin.system.exitProcess
 
-class App {
-    val moshi: Moshi = Moshi.Builder().add(KotlinJsonAdapterFactory())
-            .add(LocalDateTimeAdapter())
-            .build()
+class App(
+    private val streamingHistoryFile: String,
+    private val resultsFile: String,
+    private val artistAreasFile: String,
+    private val operation: String
+) {
+    private var _moshi: Moshi? = null
+    private var _results: Results? = null
+    private var _areaResults: AreaResults? = null
+
+    private val moshi: Moshi
+        get() = buildMoshi()
+
     val greeting: String = "hello"
-    fun run(fileName: String, parsedHistory: ParsedHistory, outputFile: String) {
-        val file = File(fileName)
-        val listens = parseSpotifyStreaming(file)
-        val flushHistory = { history: ParsedHistory -> flush(history, outputFile) }
-        val spotifyAlbums = SpotifyAlbumListens(listens, recordingRepository(), parsedHistory, flushHistory)
-        spotifyAlbums.fillAlbumListens(null)
-        return
+
+    fun run() {
+        when (operation.toLowerCase()) {
+            "listens" -> fillAlbumListens()
+            "areas" -> getArtistAreas()
+            "stats" -> getAreaStats()
+        }
     }
 
-    fun flush(history: ParsedHistory, fileName: String) {
-        ParsedHistoryLoader.flush(
-                moshi = moshi,
-                fileName = fileName,
-                history = history
+    private fun getAreaStats() {
+        val areaResults = getAreaResults()
+        val stats = AreaStatistics(areaResults)
+        val output = stats.countryCounts().toList().sortedBy { it.second }.reversed().toMap()
+        val subdivisionOutput = stats.subDivisionCounts("United States")
+        println(output)
+        println(subdivisionOutput)
+    }
+
+    private fun getResults(): Results {
+        _results = _results ?: loadHistory(resultsFile)
+        return _results!!
+    }
+
+    private fun getAreaResults(): AreaResults {
+        _areaResults = _areaResults ?: loadAreaResults()
+        return _areaResults!!
+    }
+
+    private fun getArtistAreas() {
+        val client = Client.build(musiktConfig())
+        val file = File(streamingHistoryFile)
+        val listens = parseSpotifyStreaming(file)
+        val flushResults =
+                { results: AreaResults -> flush(results, resultsFile) }
+        val areaProcessor = ArtistAreaProcessor(
+                listens,
+                client,
+                getAreaResults(),
+                flushResults
         )
+        areaProcessor.process()
+    }
+
+    private fun fillAlbumListens() {
+        val client = Client.build(musiktConfig())
+        val file = File(streamingHistoryFile)
+        val listens = parseSpotifyStreaming(file)
+        val flushHistory = { history: Results -> flush(history, resultsFile) }
+        val spotifyAlbums = AlbumListensProcessor(
+                listens,
+                client,
+                getResults(),
+                flushHistory
+        )
+        spotifyAlbums.process(null)
+    }
+
+    private fun flush(history: Results, fileName: String) {
+        ParsedHistoryLoader.flush(
+            moshi = moshi,
+            fileName = fileName,
+            history = history
+        )
+    }
+
+    private fun flush(results: AreaResults, fileName: String) {
+        AreaResultsLoader.flush(
+            moshi = moshi,
+            fileName = fileName,
+            results = results
+        )
+    }
+
+    private fun loadHistory(resultsFile: String): Results {
+        return if (File(resultsFile).isFile) {
+            ParsedHistoryLoader.fromFile(resultsFile, moshi)
+        } else {
+            val history = Results(0)
+            flush(history, resultsFile)
+            history
+        }
+    }
+
+    private fun loadAreaResults(): AreaResults {
+        return if (File(artistAreasFile).isFile) {
+            AreaResultsLoader.fromFile(artistAreasFile, moshi)
+        } else {
+            val results = AreaResults(0)
+            flush(results, artistAreasFile)
+            results
+        }
     }
 
     private fun musiktConfig(): Configuration {
@@ -43,30 +126,33 @@ class App {
         )
     }
 
-    private fun recordingRepository(): RecordingRepository {
-        val config = musiktConfig()
-        val client = OkHttpClient().newBuilder().build()
-        val request: Request = Request(config, client)
-        return RecordingRepository(request)
-    }
-
     private fun parseSpotifyStreaming(file: File) =
             StreamHistoryParser(moshi).parse(file)
+
+    private fun buildMoshi(): Moshi {
+        _moshi = _moshi ?: Moshi.Builder()
+                .add(LocalDateTimeAdapter())
+                .add(KotlinJsonAdapterFactory())
+                .build()
+        return _moshi!!
+    }
 }
 
 fun main(args: Array<String>) {
-    println(args[0])
-    val input = args[0]
-    val outputFile = args[1]
-    val app = App()
-    val results = ParsedHistoryLoader.fromFile(outputFile, app.moshi)
+    val streamingHistoryFile = args[0]
+    println(streamingHistoryFile)
+    val resultsFile = args[1]
+    println(resultsFile)
+    val operation = args[3]
+    val artistAreasFile = args[2]
+    val app = App(streamingHistoryFile, resultsFile, artistAreasFile, operation)
+    app.run()
 //    val top100 = results.topArtists(100)
 //    val line = top100.map { it.maxAlbum.toString() }.joinToString("\n")
 //    println(line)
 //    val top100File = File("top100.txt")
 //    top100File.writeText(line)
-    app.flush(results, outputFile)
-    app.run(input, results, outputFile)
+//    app.run(input, results, outputFile)
 
     exitProcess(0)
 }
