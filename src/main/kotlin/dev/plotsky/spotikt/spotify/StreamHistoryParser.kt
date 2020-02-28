@@ -7,7 +7,7 @@ import dev.plotsky.spotikt.spotify.data.Listen
 import java.io.File
 import java.lang.reflect.ParameterizedType
 
-class StreamHistoryParser(private val moshi: Moshi) {
+class StreamHistoryParser(moshi: Moshi) {
     private val type: ParameterizedType =
             Types.newParameterizedType(List::class.java, Listen::class.java)
     private val adapter: JsonAdapter<List<Listen>> = moshi.adapter(type)

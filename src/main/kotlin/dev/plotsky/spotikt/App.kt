@@ -7,7 +7,15 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dev.plotsky.musikt.Client
 import dev.plotsky.musikt.Configuration
-import dev.plotsky.spotikt.spotify.*
+import dev.plotsky.spotikt.spotify.AlbumListensProcessor
+import dev.plotsky.spotikt.spotify.AreaResults
+import dev.plotsky.spotikt.spotify.AreaResultsLoader
+import dev.plotsky.spotikt.spotify.AreaStatistics
+import dev.plotsky.spotikt.spotify.ArtistAreaProcessor
+import dev.plotsky.spotikt.spotify.LocalDateTimeAdapter
+import dev.plotsky.spotikt.spotify.ParsedHistoryLoader
+import dev.plotsky.spotikt.spotify.Results
+import dev.plotsky.spotikt.spotify.StreamHistoryParser
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -17,14 +25,26 @@ class App(
     private val artistAreasFile: String,
     private val operation: String
 ) {
-    private var _moshi: Moshi? = null
-    private var _results: Results? = null
-    private var _areaResults: AreaResults? = null
+    private val moshi: Moshi by lazy {
+        Moshi.Builder()
+            .add(LocalDateTimeAdapter())
+            .add(KotlinJsonAdapterFactory())
+            .build()
+    }
+    private val results: Results by lazy {
+        loadHistory(resultsFile)
+    }
+    private val areaResults: AreaResults by lazy {
+        loadAreaResults()
+    }
 
-    private val moshi: Moshi
-        get() = buildMoshi()
-
-    val greeting: String = "hello"
+    private val musiktConfig: Configuration by lazy {
+        Configuration(
+            baseUrl = "https://musicbrainz.org/ws/2",
+            appName = "Spotikt",
+            contact = "Derrick Plotsky https://github.com/derrickp"
+        )
+    }
 
     fun run() {
         when (operation.toLowerCase()) {
@@ -35,26 +55,17 @@ class App(
     }
 
     private fun getAreaStats() {
-        val areaResults = getAreaResults()
         val stats = AreaStatistics(areaResults)
-        val output = stats.countryCounts().toList().sortedBy { it.second }.reversed().toMap()
-        val subdivisionOutput = stats.subDivisionCounts("United States")
+        val output = stats.countryCounts().toList()
+                .sortedBy { it.second }.reversed().toMap()
+        val subdivisionOutput = stats
+                .subDivisionCounts("United States")
         println(output)
         println(subdivisionOutput)
     }
 
-    private fun getResults(): Results {
-        _results = _results ?: loadHistory(resultsFile)
-        return _results!!
-    }
-
-    private fun getAreaResults(): AreaResults {
-        _areaResults = _areaResults ?: loadAreaResults()
-        return _areaResults!!
-    }
-
     private fun getArtistAreas() {
-        val client = Client.build(musiktConfig())
+        val client = Client.build(musiktConfig)
         val file = File(streamingHistoryFile)
         val listens = parseSpotifyStreaming(file)
         val flushResults =
@@ -62,21 +73,22 @@ class App(
         val areaProcessor = ArtistAreaProcessor(
                 listens,
                 client,
-                getAreaResults(),
+                areaResults,
                 flushResults
         )
         areaProcessor.process()
     }
 
     private fun fillAlbumListens() {
-        val client = Client.build(musiktConfig())
+        val client = Client.build(musiktConfig)
         val file = File(streamingHistoryFile)
         val listens = parseSpotifyStreaming(file)
-        val flushHistory = { history: Results -> flush(history, resultsFile) }
+        val flushHistory =
+                { history: Results -> flush(history, resultsFile) }
         val spotifyAlbums = AlbumListensProcessor(
                 listens,
                 client,
-                getResults(),
+                results,
                 flushHistory
         )
         spotifyAlbums.process(null)
@@ -118,33 +130,22 @@ class App(
         }
     }
 
-    private fun musiktConfig(): Configuration {
-        return Configuration(
-            baseUrl = "https://musicbrainz.org/ws/2",
-            appName = "Spotikt",
-            contact = "Derrick Plotsky https://github.com/derrickp"
-        )
-    }
-
     private fun parseSpotifyStreaming(file: File) =
             StreamHistoryParser(moshi).parse(file)
-
-    private fun buildMoshi(): Moshi {
-        _moshi = _moshi ?: Moshi.Builder()
-                .add(LocalDateTimeAdapter())
-                .add(KotlinJsonAdapterFactory())
-                .build()
-        return _moshi!!
-    }
 }
 
+const val STREAMING_INDEX = 0
+const val RESULTS_INDEX = 1
+const val ARTIST_AREAS_INDEX = 2
+const val OPERATION_INDEX = 3
+
 fun main(args: Array<String>) {
-    val streamingHistoryFile = args[0]
+    val streamingHistoryFile = args[STREAMING_INDEX]
     println(streamingHistoryFile)
-    val resultsFile = args[1]
+    val resultsFile = args[RESULTS_INDEX]
     println(resultsFile)
-    val operation = args[3]
-    val artistAreasFile = args[2]
+    val artistAreasFile = args[ARTIST_AREAS_INDEX]
+    val operation = args[OPERATION_INDEX]
     val app = App(streamingHistoryFile, resultsFile, artistAreasFile, operation)
     app.run()
 //    val top100 = results.topArtists(100)

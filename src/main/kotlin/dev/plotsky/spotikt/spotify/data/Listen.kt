@@ -2,6 +2,9 @@ package dev.plotsky.spotikt.spotify.data
 
 import java.time.LocalDateTime
 
+const val MS_IN_SEC = 1000
+const val SEC_IN_MIN = 60.0
+
 data class Listen(
     val endTime: LocalDateTime,
     val artistName: String,
@@ -9,10 +12,10 @@ data class Listen(
     val msPlayed: Int
 ) {
     fun minutesPlayed(): Double {
-        return msPlayed / 1000.0 / 60.0
+        return msPlayed / MS_IN_SEC.toFloat() / SEC_IN_MIN
     }
 
     fun secondsPlayed(): Int {
-        return msPlayed / 1000
+        return msPlayed / MS_IN_SEC
     }
 }

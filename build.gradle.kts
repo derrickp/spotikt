@@ -11,6 +11,12 @@ plugins {
     // Apply the application plugin to add support for building a CLI application.
     application
     `maven-publish`
+    id("io.gitlab.arturbosch.detekt").version("1.6.0")
+}
+
+detekt {
+    toolVersion = "1.6.0"
+    config = files("config/detekt/detekt.yml")
 }
 
 repositories {

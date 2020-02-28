@@ -2,12 +2,13 @@ package dev.plotsky.spotikt.spotify
 
 import dev.plotsky.musikt.Client
 import dev.plotsky.musikt.entities.areas.Area
-import dev.plotsky.musikt.entities.areas.AreaReference
 import dev.plotsky.musikt.entities.artists.Artist
 import dev.plotsky.musikt.search.IdOptions
 import dev.plotsky.musikt.search.artists.ArtistQuery
 import dev.plotsky.spotikt.spotify.data.Listen
 import java.lang.Thread.sleep
+
+const val SLEEP_INTERVAL = 1500L
 
 class ArtistAreaProcessor(
     private val listens: List<Listen>,
@@ -19,35 +20,30 @@ class ArtistAreaProcessor(
         val toProcess = listens
                 .slice(results.currentParseIndex until listens.size)
         for (listen in toProcess) {
-            if (results.containsArtist(listen.artistName)) {
-                results.incrementIndex()
-                continue
-            }
-
-            val artist = getArtist(listen.artistName)
-
-            if (artist == null) {
-                results.incrementIndex()
-                continue
-            }
-
-            val areaReference = artist.beginArea ?: artist.area
-            println(areaReference)
-            if (areaReference == null) {
-                results.addArtist(listen.artistName, emptyList())
-            } else {
-                val areas = getAllAreas(areaReference.id, emptyList())
-                val trimmedAreas = areas.map { trimArea(it) }
-                results.addArtist(listen.artistName, trimmedAreas)
-            }
-
             results.incrementIndex()
-
-            flush(results)
-            sleep(1500L)
+            if (!results.containsArtist(listen.artistName)) {
+                processArtistArea(listen)
+            }
         }
 
         flush(results)
+    }
+
+    private fun processArtistArea(listen: Listen) {
+        val artist = getArtist(listen.artistName) ?: return
+
+        val areaReference = artist.beginArea ?: artist.area
+        println(areaReference)
+        if (areaReference == null) {
+            results.addArtist(listen.artistName, emptyList())
+        } else {
+            val areas = getAllAreas(areaReference.id, emptyList())
+            val trimmedAreas = areas.map { trimArea(it) }
+            results.addArtist(listen.artistName, trimmedAreas)
+        }
+
+        flush(results)
+        sleep(SLEEP_INTERVAL)
     }
 
     private fun trimArea(area: Area): Area {
@@ -62,7 +58,7 @@ class ArtistAreaProcessor(
     }
 
     private fun getAllAreas(id: String, areas: List<Area>): List<Area> {
-        sleep(1500L)
+        sleep(SLEEP_INTERVAL)
         val idOptions = IdOptions(
                 id = id,
                 relationships = listOf("area-rels")
@@ -73,17 +69,17 @@ class ArtistAreaProcessor(
                 emptyList<Area>() + areas
             }
             area.relatedAreas.isEmpty() -> {
-                return listOf(area) + areas
+                listOf(area) + areas
             }
             else -> {
                 val backward = area.relatedAreas
                         .firstOrNull { it.direction == "backward" }
-                return if (backward == null) {
+                if (backward == null) {
                     areas + listOf(area)
                 } else {
                     getAllAreas(
-                            id = backward.area.id,
-                            areas = areas + listOf(area)
+                        id = backward.area.id,
+                        areas = areas + listOf(area)
                     )
                 }
             }
@@ -94,7 +90,7 @@ class ArtistAreaProcessor(
         val artistQuery = ArtistQuery(artist = "\"${name}\"")
         val artists = client.artists.getByQuery(artistQuery)
         val max = artists.maxBy { it.score!! } ?: return null
-        sleep(1500L)
+        sleep(SLEEP_INTERVAL)
         val idOptions = IdOptions(max.id, listOf("area-rels"))
         return client.artists.getById(idOptions)
     }

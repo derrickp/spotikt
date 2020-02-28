@@ -8,6 +8,12 @@ import dev.plotsky.spotikt.spotify.data.ArtistResults
 import dev.plotsky.spotikt.spotify.data.Listen
 import java.lang.Thread.sleep
 
+const val FLUSH_INTERVAL = 10
+const val PRINT_INTERVAL = 100
+const val MOD_LEFTOVER = 0
+const val MIN_PLAYED = 1.0
+const val MIN_RECORDING_SCORE = 90
+
 class AlbumListensProcessor(
     private val listens: List<Listen>,
     private val client: Client,
@@ -32,12 +38,14 @@ class AlbumListensProcessor(
                         .filter { it.status == "Official" }
                 addListens(listen, officialReleases)
             }
-            if (count % 10 == 0) {
+            if (count % FLUSH_INTERVAL == MOD_LEFTOVER) {
                 flushHistory(history)
             }
-            if (count % 100 == 0)println("${listen.artistName} $count")
-            sleep(1500L)
-            count += 1
+            if (count % PRINT_INTERVAL == MOD_LEFTOVER) {
+                println("${listen.artistName} $count")
+            }
+            sleep(SLEEP_INTERVAL)
+            count++
             history.incrementIndex()
         }
 
@@ -57,7 +65,8 @@ class AlbumListensProcessor(
 
     private fun listensByYear(year: Int): List<Listen> {
         return listens
-                .filter { it.endTime.year == year && it.minutesPlayed() > 1.0 }
+                .filter { it.endTime.year == year &&
+                        it.minutesPlayed() > MIN_PLAYED }
     }
 
     private fun allListens(): List<Listen> {
@@ -107,7 +116,8 @@ class AlbumListensProcessor(
         if (recordings.isEmpty()) {
             println(query.getEncodedQuery())
         }
-        val highScores = recordings.filter { it.score!! >= 90 }
+        val highScores = recordings
+                .filter { it.score!! >= MIN_RECORDING_SCORE }
         return highScores.firstOrNull()
     }
 }
