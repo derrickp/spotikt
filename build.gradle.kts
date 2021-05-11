@@ -6,7 +6,7 @@
 /* ktlint-disable max-line-length */
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
-    id("org.jetbrains.kotlin.jvm") version "1.3.61"
+    id("org.jetbrains.kotlin.jvm") version "1.4.30"
 
     // Apply the application plugin to add support for building a CLI application.
     application
@@ -22,7 +22,11 @@ detekt {
 repositories {
     // Use jcenter for resolving dependencies.
     // You can declare any Maven/Ivy/file repository here.
-    jcenter()
+    mavenLocal()
+    mavenCentral()
+    gradlePluginPortal()
+    maven("https://oss.sonatype.org/content/repositories/snapshots/")
+    maven("https://jitpack.io")
     maven {
         name = "GitHubPackages"
         url = uri("https://maven.pkg.github.com/derrickp/musikt")
@@ -52,7 +56,7 @@ dependencies {
 }
 
 application {
+    mainClass.set("dev.plotsky.spotikt.AppKt")
     // Define the main class for the application.
-    mainClassName = "dev.plotsky.spotikt.AppKt"
 }
 /* ktlint-enable max-line-length */
