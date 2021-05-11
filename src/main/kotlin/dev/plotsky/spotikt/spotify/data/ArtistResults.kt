@@ -5,10 +5,10 @@ data class ArtistResults(
     val albumCounts: MutableMap<String, Int> = mutableMapOf()
 ) {
     val maxAlbumCount: Int
-        get() = albumCounts.values.max()!!
+        get() = albumCounts.values.maxOrNull()!!
     val maxAlbum: Triple<String, String, Int>
         get() {
-            val maxAlbum = albumCounts.maxBy { it.value }!!
+            val maxAlbum = albumCounts.maxByOrNull { it.value }!!
             return Triple(artistName, maxAlbum.key, maxAlbum.value)
         }
 

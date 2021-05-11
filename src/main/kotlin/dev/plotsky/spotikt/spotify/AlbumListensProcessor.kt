@@ -7,6 +7,7 @@ import dev.plotsky.musikt.search.recordings.RecordingQuery
 import dev.plotsky.spotikt.spotify.data.ArtistResults
 import dev.plotsky.spotikt.spotify.data.Listen
 import java.lang.Thread.sleep
+import java.net.SocketTimeoutException
 
 const val FLUSH_INTERVAL = 10
 const val PRINT_INTERVAL = 100
@@ -112,12 +113,17 @@ class AlbumListensProcessor(
     }
 
     private fun getRecording(query: RecordingQuery): Recording? {
-        val recordings = client.recordings.getByQuery(query)
-        if (recordings.isEmpty()) {
-            println(query.getEncodedQuery())
-        }
-        val highScores = recordings
+        return try {
+            val recordings = client.recordings.getByQuery(query)
+            if (recordings.isEmpty()) {
+                println(query.getEncodedQuery())
+            }
+            val highScores = recordings
                 .filter { it.score!! >= MIN_RECORDING_SCORE }
-        return highScores.firstOrNull()
+            highScores.firstOrNull()
+        } catch (exception: SocketTimeoutException) {
+            println(query.getEncodedQuery())
+            null;
+        }
     }
 }

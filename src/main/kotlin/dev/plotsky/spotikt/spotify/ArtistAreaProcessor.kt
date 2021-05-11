@@ -89,7 +89,7 @@ class ArtistAreaProcessor(
     private fun getArtist(name: String): Artist? {
         val artistQuery = ArtistQuery(artist = "\"${name}\"")
         val artists = client.artists.getByQuery(artistQuery)
-        val max = artists.maxBy { it.score!! } ?: return null
+        val max = artists.maxByOrNull { it.score!! } ?: return null
         sleep(SLEEP_INTERVAL)
         val idOptions = IdOptions(max.id, listOf("area-rels"))
         return client.artists.getById(idOptions)
